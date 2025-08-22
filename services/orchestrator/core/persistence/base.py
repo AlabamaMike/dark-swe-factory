@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
 from ..models import Feature, Task
 
@@ -24,3 +24,10 @@ class Persistence(ABC):
 
     @abstractmethod
     def update_task(self, task: Task) -> None: ...
+
+    # PR metadata
+    @abstractmethod
+    def record_task_pr(self, task_id: str, branch: str, pr_number: int) -> None: ...
+
+    @abstractmethod
+    def get_task_pr(self, task_id: str) -> Optional[Tuple[str, int]]: ...

@@ -167,6 +167,11 @@ class Orchestrator:
         if not feature_id:
             return
         branch = f"dsf/{feature_id}/{task.id}"
+        # Skip if PR already recorded
+        if self._persistence:
+            existing = self._persistence.get_task_pr(task.id)
+            if existing:
+                return
         try:
             # Create branch if missing
             try:
@@ -184,7 +189,11 @@ class Orchestrator:
                 branch=branch,
             )
             # Create PR
-            self._github.create_pull_request(branch=branch, title=title, body="Automated by DSF")
+            pr_num = self._github.create_pull_request(
+                branch=branch, title=title, body="Automated by DSF"
+            )
+            if self._persistence:
+                self._persistence.record_task_pr(task.id, branch, pr_num)
         except Exception as e:
             # Swallow errors for MVP but log
             logging.error("GitHub integration error: %s", e)

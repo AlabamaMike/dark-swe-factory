@@ -47,3 +47,7 @@ async def test_orchestrator_github_hook(monkeypatch):
     await orch.run_feature(feat.id)
     # We expect at least one call (the last task completion creates a PR)
     assert any(c[0] == "pr" for c in calls)
+    # Running again should not create duplicate PRs due to persistence guard
+    prev_count = len([c for c in calls if c[0] == "pr"])
+    await orch.run_feature(feat.id)
+    assert len([c for c in calls if c[0] == "pr"]) == prev_count

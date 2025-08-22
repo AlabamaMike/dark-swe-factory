@@ -42,6 +42,13 @@ class SQLitePersistence:
                 FOREIGN KEY(task_id) REFERENCES tasks(id),
                 FOREIGN KEY(depends_on_id) REFERENCES tasks(id)
             );
+            CREATE TABLE IF NOT EXISTS task_prs (
+                task_id TEXT PRIMARY KEY,
+                branch TEXT NOT NULL,
+                pr_number INTEGER NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(task_id) REFERENCES tasks(id)
+            );
             """
         )
         self._conn.commit()
@@ -147,3 +154,21 @@ class SQLitePersistence:
             (task.status.value, task.result, task.id),
         )
         self._conn.commit()
+
+    def record_task_pr(self, task_id: str, branch: str, pr_number: int) -> None:
+        cur = self._conn.cursor()
+        cur.execute(
+            "INSERT OR REPLACE INTO task_prs(task_id, branch, pr_number, created_at) VALUES (?,?,?,?)",
+            (task_id, branch, pr_number, datetime.utcnow().isoformat()),
+        )
+        self._conn.commit()
+
+    def get_task_pr(self, task_id: str):
+        cur = self._conn.cursor()
+        row = cur.execute(
+            "SELECT branch, pr_number FROM task_prs WHERE task_id=?",
+            (task_id,),
+        ).fetchone()
+        if not row:
+            return None
+        return (row["branch"], int(row["pr_number"]))

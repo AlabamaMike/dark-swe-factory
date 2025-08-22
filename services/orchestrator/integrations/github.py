@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -38,11 +39,30 @@ class GitHubClient:
         url = f"{self.api_base}{path}"
         headers = self._headers()
         headers.update(kwargs.pop("headers", {}))
-        with httpx.Client(timeout=15) as client:
-            resp = client.request(method, url, headers=headers, **kwargs)
-        if resp.status_code >= 400:
-            raise RuntimeError(f"GitHub API error {resp.status_code}: {resp.text}")
-        return resp
+        max_retries = 3
+        backoff = 1.0
+        for attempt in range(max_retries):
+            try:
+                with httpx.Client(timeout=15) as client:
+                    resp = client.request(method, url, headers=headers, **kwargs)
+                # Handle rate limiting
+                if resp.status_code == 403 and resp.headers.get("x-ratelimit-remaining") == "0":
+                    reset = resp.headers.get("x-ratelimit-reset")
+                    if reset and reset.isdigit():
+                        wait_for = max(0, int(reset) - int(time.time())) + 1
+                        time.sleep(min(wait_for, 10))
+                        continue
+                if resp.status_code >= 500:
+                    raise RuntimeError(f"GitHub server error {resp.status_code}")
+                if resp.status_code >= 400:
+                    raise RuntimeError(f"GitHub API error {resp.status_code}: {resp.text}")
+                return resp
+            except Exception:
+                if attempt < max_retries - 1:
+                    time.sleep(backoff)
+                    backoff *= 2
+                else:
+                    raise
 
     def get_branch_ref(self, branch: str) -> Optional[str]:
         r = self._request("GET", f"/repos/{self.repo}/git/ref/heads/{branch}")
