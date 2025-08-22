@@ -23,6 +23,13 @@ services:
       - "8000:8000"
     depends_on:
       - redis
+    volumes:
+      - ./artifacts:/app/artifacts
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   worker:
     build:
@@ -37,3 +44,10 @@ services:
       - DSF_GITHUB_REPO=${DSF_GITHUB_REPO:-}
     depends_on:
       - redis
+    volumes:
+      - ./artifacts:/app/artifacts
+    healthcheck:
+      test: ["CMD", "python", "-c", "import redis,os; redis.Redis.from_url(os.environ.get('DSF_REDIS_URL','redis://redis:6379/0')).ping()"]
+      interval: 10s
+      timeout: 3s
+      retries: 3

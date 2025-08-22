@@ -13,6 +13,11 @@ app = FastAPI(title="Dark Software Factory - Orchestrator", version="0.1.0")
 orchestrator = Orchestrator()
 
 
+@app.get("/healthz")
+async def healthz():
+    return {"ok": True}
+
+
 @app.post("/features", response_model=FeatureOut)
 async def create_feature(feature: FeatureIn, bg: BackgroundTasks):
     feat = orchestrator.submit_feature(title=feature.title, description=feature.description)
