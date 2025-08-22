@@ -1,0 +1,29 @@
+name: dark-swe-factory
+metadata:
+  template: dsf-aca
+services:
+  api:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: ./Dockerfile.api
+      context: .
+  worker:
+    project: .
+    language: python
+    host: containerapp
+    docker:
+      path: ./Dockerfile.worker
+      context: .
+pipeline:
+  provider: github
+infra:
+  provider: bicep
+  path: infra
+  module: main.bicep
+  parameters:
+    location: eastus
+    namePrefix: dsf
+    apiImage: ${{ services.api.imageName }}
+    workerImage: ${{ services.worker.imageName }}
