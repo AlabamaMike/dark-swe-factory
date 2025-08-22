@@ -16,6 +16,7 @@ from .dag import basic_decompose
 from .models import AgentType, Feature, Task, TaskStatus
 from .persistence.base import Persistence
 from .persistence.sqlite import SQLitePersistence
+from .queue.redis_queue import RedisQueue
 
 
 class Orchestrator:
@@ -40,6 +41,10 @@ class Orchestrator:
             repo = os.getenv("DSF_GITHUB_REPO")
             if token and repo:
                 self._github = GitHubClient(repo=repo, token=token)
+        # Optional Redis queue
+        self._queue: Optional[RedisQueue] = None
+        if os.getenv("DSF_QUEUE", "").lower() == "redis":
+            self._queue = RedisQueue()
 
     def submit_feature(self, title: str, description: str) -> Feature:
         feature = Feature(title=title, description=description)
@@ -105,8 +110,23 @@ class Orchestrator:
                 await asyncio.sleep(0.05)
                 continue
 
-            # Run all runnable tasks concurrently
-            await asyncio.gather(*(self._run_task(n) for n in runnable))
+            if self._queue is None:
+                # Run all runnable tasks concurrently inline
+                await asyncio.gather(*(self._run_task(n) for n in runnable))
+            else:
+                # Enqueue runnable tasks
+                import json as _json
+
+                for n in runnable:
+                    self._queue.enqueue(_json.dumps({"task_id": n}))
+                # Poll for completion
+                while True:
+                    tasks = {t.id: t for t in self.list_tasks(feature_id)}
+                    if all(
+                        tasks[n].status in (TaskStatus.DONE, TaskStatus.FAILED) for n in runnable
+                    ):
+                        break
+                    await asyncio.sleep(0.1)
             for n in runnable:
                 pending.discard(n)
 
@@ -132,8 +152,7 @@ class Orchestrator:
     def feature_status(self, feature_id: str):
         from services.orchestrator.app.schemas import FeatureStatusOut, TaskOut
 
-        feat = self._features[feature_id]
-        tasks = [self._tasks[tid] for tid in feat.task_ids]
+        tasks = self.list_tasks(feature_id)
         total = len(tasks)
         completed = sum(1 for t in tasks if t.status == TaskStatus.DONE)
         running = sum(1 for t in tasks if t.status == TaskStatus.RUNNING)
