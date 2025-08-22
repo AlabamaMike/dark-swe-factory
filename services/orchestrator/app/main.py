@@ -42,10 +42,30 @@ async def github_webhook(
     request: Request,
     x_hub_signature_256: str | None = Header(default=None, alias="X-Hub-Signature-256"),
     x_github_event: str | None = Header(default=None, alias="X-GitHub-Event"),
+    bg: BackgroundTasks | None = None,
 ):
     secret = os.getenv("DSF_GITHUB_WEBHOOK_SECRET", "")
     payload = await request.body()
     if not secret or not verify_signature(secret, x_hub_signature_256 or "", payload):
         raise HTTPException(status_code=401, detail="Invalid signature")
-    # For MVP, just acknowledge
+
+    # Minimal ingestion: create a feature from newly opened GitHub issues
+    try:
+        event = x_github_event or ""
+        body = await request.json()
+    except Exception:
+        event = x_github_event or ""
+        body = {}
+
+    if event == "issues" and body.get("action") == "opened":
+        issue = body.get("issue", {})
+        title = (issue.get("title") or "").strip()
+        desc = issue.get("body") or ""
+        if title:
+            feat = orchestrator.submit_feature(title=title, description=desc)
+            if bg is not None:
+                bg.add_task(orchestrator.run_feature, feat.id)
+            return {"ok": True, "event": event, "feature_id": feat.id}
+
+    # Default acknowledgement
     return {"ok": True, "event": x_github_event}

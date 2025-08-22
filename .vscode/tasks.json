@@ -42,6 +42,12 @@
 			],
 			"isBackground": false,
 			"group": "build"
+		},
+		{
+			"label": "quality-gate",
+			"type": "shell",
+			"command": "bash -lc 'source .venv/bin/activate 2>/dev/null || true; ruff check . && black --check . && pytest && bandit -c pyproject.toml -r services'",
+			"group": "build"
 		}
 	]
 }
