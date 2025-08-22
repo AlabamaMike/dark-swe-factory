@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from typing import Dict, List, Optional
 
 import networkx as nx
+
+from services.orchestrator.integrations.github import GitHubClient
 
 from .agents.code_writer import CodeWriterAgent
 from .agents.review import ReviewAgent
@@ -30,6 +33,13 @@ class Orchestrator:
         if os.getenv("DSF_DB", "sqlite").lower() == "sqlite":
             self._persistence = SQLitePersistence()
             self._persistence.init()
+        # Optional GitHub integration
+        self._github: Optional[GitHubClient] = None
+        if os.getenv("DSF_GITHUB_ENABLED", "false").lower() in {"1", "true", "yes"}:
+            token = os.getenv("DSF_GITHUB_TOKEN")
+            repo = os.getenv("DSF_GITHUB_REPO")
+            if token and repo:
+                self._github = GitHubClient(repo=repo, token=token)
 
     def submit_feature(self, title: str, description: str) -> Feature:
         feature = Feature(title=title, description=description)
@@ -112,6 +122,7 @@ class Orchestrator:
             task.status = TaskStatus.DONE
             if self._persistence:
                 self._persistence.update_task(task)
+            await self._on_task_completed(task)
         except Exception as e:
             task.result = f"error: {e}"
             task.status = TaskStatus.FAILED
@@ -142,3 +153,39 @@ class Orchestrator:
             failed=failed,
             tasks=[TaskOut.model_validate(t.model_dump()) for t in tasks],
         )
+
+    async def _on_task_completed(self, task: Task) -> None:
+        """Optional GitHub branch/PR creation for completed tasks."""
+        if not self._github:
+            return
+        # Find feature id via reverse lookup
+        feature_id = None
+        for fid, feat in self._features.items():
+            if task.id in feat.task_ids:
+                feature_id = fid
+                break
+        if not feature_id:
+            return
+        branch = f"dsf/{feature_id}/{task.id}"
+        try:
+            # Create branch if missing
+            try:
+                self._github.create_branch(branch)
+            except Exception as e:
+                # Branch may already exist or other recoverable error
+                logging.warning("GitHub branch creation skipped: %s", e)
+            # Commit task result as artifact file
+            path = f"artifacts/agents/{feature_id}/{task.id}.txt"
+            title = f"DSF: {task.title} [{task.agent_type.value}]"
+            self._github.create_or_update_file(
+                path=path,
+                content=task.result or "",
+                message=title,
+                branch=branch,
+            )
+            # Create PR
+            self._github.create_pull_request(branch=branch, title=title, body="Automated by DSF")
+        except Exception as e:
+            # Swallow errors for MVP but log
+            logging.error("GitHub integration error: %s", e)
+            return

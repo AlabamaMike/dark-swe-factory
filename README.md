@@ -48,3 +48,14 @@ ruff check . && black --check . && pytest && bandit -c pyproject.toml -r service
 ```
 
 VS Code Task: “Quality Gate” (Run -> Tasks -> Quality Gate)
+
+## GitHub integration (optional)
+
+Set environment variables to enable branch/PR creation on task completion and to validate webhooks:
+
+- `DSF_GITHUB_ENABLED=true`
+- `DSF_GITHUB_TOKEN=<gh_token_with_repo_scope>`
+- `DSF_GITHUB_REPO=owner/repo`
+- `DSF_GITHUB_WEBHOOK_SECRET=<secret>`
+
+Webhook endpoint: `POST /github/webhook` (expects `X-Hub-Signature-256`). For MVP, it just verifies and acknowledges the event.

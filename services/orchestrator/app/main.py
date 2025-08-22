@@ -1,6 +1,9 @@
-from fastapi import BackgroundTasks, FastAPI, HTTPException
+import os
+
+from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
 
 from services.orchestrator.core.orchestrator import Orchestrator
+from services.orchestrator.integrations.github import verify_signature
 
 from .schemas import FeatureIn, FeatureOut, FeatureStatusOut, TaskOut
 
@@ -32,3 +35,17 @@ async def list_feature_tasks(feature_id: str):
     if not feat:
         raise HTTPException(status_code=404, detail="Feature not found")
     return [TaskOut.model_validate(t.model_dump()) for t in orchestrator.list_tasks(feature_id)]
+
+
+@app.post("/github/webhook")
+async def github_webhook(
+    request: Request,
+    x_hub_signature_256: str | None = Header(default=None, alias="X-Hub-Signature-256"),
+    x_github_event: str | None = Header(default=None, alias="X-GitHub-Event"),
+):
+    secret = os.getenv("DSF_GITHUB_WEBHOOK_SECRET", "")
+    payload = await request.body()
+    if not secret or not verify_signature(secret, x_hub_signature_256 or "", payload):
+        raise HTTPException(status_code=401, detail="Invalid signature")
+    # For MVP, just acknowledge
+    return {"ok": True, "event": x_github_event}
