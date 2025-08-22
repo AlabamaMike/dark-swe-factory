@@ -10,3 +10,5 @@ ruff~=0.5
 black~=24.8
 bandit[toml]~=1.7
 redis~=5.0
+azure-identity~=1.17
+azure-keyvault-secrets~=4.8

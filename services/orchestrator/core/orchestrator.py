@@ -8,6 +8,7 @@ from typing import Dict, List, Optional
 import networkx as nx
 
 from services.orchestrator.integrations.github import GitHubClient
+from services.orchestrator.integrations.secrets import SecretsProvider
 
 from .agents.code_writer import CodeWriterAgent
 from .agents.review import ReviewAgent
@@ -21,6 +22,7 @@ from .queue.redis_queue import RedisQueue
 
 class Orchestrator:
     def __init__(self):
+        self._secrets = SecretsProvider.from_env()
         self._features: Dict[str, Feature] = {}
         self._tasks: Dict[str, Task] = {}
         self._graphs: Dict[str, nx.DiGraph] = {}
@@ -37,14 +39,16 @@ class Orchestrator:
         # Optional GitHub integration
         self._github: Optional[GitHubClient] = None
         if os.getenv("DSF_GITHUB_ENABLED", "false").lower() in {"1", "true", "yes"}:
-            token = os.getenv("DSF_GITHUB_TOKEN")
-            repo = os.getenv("DSF_GITHUB_REPO")
+            token = self._secrets.get_secret("DSF_GITHUB_TOKEN", os.getenv("DSF_GITHUB_TOKEN"))
+            repo = self._secrets.get_secret("DSF_GITHUB_REPO", os.getenv("DSF_GITHUB_REPO"))
             if token and repo:
                 self._github = GitHubClient(repo=repo, token=token)
         # Optional Redis queue
         self._queue: Optional[RedisQueue] = None
         if os.getenv("DSF_QUEUE", "").lower() == "redis":
-            self._queue = RedisQueue()
+            # Allow Redis URL via Key Vault
+            url = self._secrets.get_secret("DSF_REDIS_URL", os.getenv("DSF_REDIS_URL"))
+            self._queue = RedisQueue(url=url)
 
     def submit_feature(self, title: str, description: str) -> Feature:
         feature = Feature(title=title, description=description)

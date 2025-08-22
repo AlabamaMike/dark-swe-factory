@@ -19,6 +19,8 @@ services:
       - DSF_GITHUB_TOKEN=${DSF_GITHUB_TOKEN:-}
       - DSF_GITHUB_REPO=${DSF_GITHUB_REPO:-}
       - DSF_GITHUB_WEBHOOK_SECRET=${DSF_GITHUB_WEBHOOK_SECRET:-}
+  - DSF_KEYVAULT_ENABLED=${DSF_KEYVAULT_ENABLED:-false}
+  - DSF_KEYVAULT_URI=${DSF_KEYVAULT_URI:-}
     ports:
       - "8000:8000"
     depends_on:
@@ -42,6 +44,8 @@ services:
       - DSF_GITHUB_ENABLED=${DSF_GITHUB_ENABLED:-false}
       - DSF_GITHUB_TOKEN=${DSF_GITHUB_TOKEN:-}
       - DSF_GITHUB_REPO=${DSF_GITHUB_REPO:-}
+  - DSF_KEYVAULT_ENABLED=${DSF_KEYVAULT_ENABLED:-false}
+  - DSF_KEYVAULT_URI=${DSF_KEYVAULT_URI:-}
     depends_on:
       - redis
     volumes:

@@ -60,6 +60,24 @@ Set environment variables to enable branch/PR creation on task completion and to
 
 Webhook endpoint: `POST /github/webhook` (expects `X-Hub-Signature-256`). For MVP, it just verifies and acknowledges the event.
 
+## Azure Key Vault (optional)
+
+Set the following to load secrets from Key Vault using Managed Identity (in Azure) or Azure CLI login locally:
+
+- `DSF_KEYVAULT_ENABLED=true`
+- `DSF_KEYVAULT_URI=https://<your-vault-name>.vault.azure.net/`
+
+Secrets read (with env fallback):
+
+- `DSF_GITHUB_TOKEN`
+- `DSF_GITHUB_REPO`
+- `DSF_GITHUB_WEBHOOK_SECRET`
+- `DSF_REDIS_URL`
+
+Notes:
+- In Azure, grant the app’s managed identity `Key Vault Secrets User` role on the vault.
+- Locally, `az login` or set `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` for a service principal.
+
 ## Containers
 
 Run the API and worker with Redis using Docker:

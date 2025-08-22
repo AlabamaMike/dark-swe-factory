@@ -4,6 +4,7 @@ from fastapi import BackgroundTasks, FastAPI, Header, HTTPException, Request
 
 from services.orchestrator.core.orchestrator import Orchestrator
 from services.orchestrator.integrations.github import verify_signature
+from services.orchestrator.integrations.secrets import SecretsProvider
 
 from .schemas import FeatureIn, FeatureOut, FeatureStatusOut, TaskOut
 
@@ -11,6 +12,7 @@ app = FastAPI(title="Dark Software Factory - Orchestrator", version="0.1.0")
 
 # Single orchestrator instance for MVP
 orchestrator = Orchestrator()
+secrets = SecretsProvider.from_env()
 
 
 @app.get("/healthz")
@@ -49,7 +51,10 @@ async def github_webhook(
     x_github_event: str | None = Header(default=None, alias="X-GitHub-Event"),
     bg: BackgroundTasks | None = None,
 ):
-    secret = os.getenv("DSF_GITHUB_WEBHOOK_SECRET", "")
+    secret = (
+        secrets.get_secret("DSF_GITHUB_WEBHOOK_SECRET", os.getenv("DSF_GITHUB_WEBHOOK_SECRET", ""))
+        or ""
+    )
     payload = await request.body()
     if not secret or not verify_signature(secret, x_hub_signature_256 or "", payload):
         raise HTTPException(status_code=401, detail="Invalid signature")
