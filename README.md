@@ -59,3 +59,23 @@ Set environment variables to enable branch/PR creation on task completion and to
 - `DSF_GITHUB_WEBHOOK_SECRET=<secret>`
 
 Webhook endpoint: `POST /github/webhook` (expects `X-Hub-Signature-256`). For MVP, it just verifies and acknowledges the event.
+
+## Containers
+
+Run the API and worker with Redis using Docker:
+
+1. Optionally create a `.env` file with:
+  - `DSF_GITHUB_ENABLED=true`
+  - `DSF_GITHUB_TOKEN=ghp_xxx`
+  - `DSF_GITHUB_REPO=owner/repo`
+  - `DSF_GITHUB_WEBHOOK_SECRET=secret`
+
+2. Start services:
+
+```bash
+docker compose up --build
+```
+
+API: http://localhost:8000
+
+Note: SQLite DB lives inside the container by default. Mount a volume for persistence across runs.

@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    environment:
+      - DSF_DB=sqlite
+      - DSF_QUEUE=redis
+      - DSF_REDIS_URL=redis://redis:6379/0
+      # Optional GitHub config
+      - DSF_GITHUB_ENABLED=${DSF_GITHUB_ENABLED:-false}
+      - DSF_GITHUB_TOKEN=${DSF_GITHUB_TOKEN:-}
+      - DSF_GITHUB_REPO=${DSF_GITHUB_REPO:-}
+      - DSF_GITHUB_WEBHOOK_SECRET=${DSF_GITHUB_WEBHOOK_SECRET:-}
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    environment:
+      - DSF_DB=sqlite
+      - DSF_QUEUE=redis
+      - DSF_REDIS_URL=redis://redis:6379/0
+      - DSF_GITHUB_ENABLED=${DSF_GITHUB_ENABLED:-false}
+      - DSF_GITHUB_TOKEN=${DSF_GITHUB_TOKEN:-}
+      - DSF_GITHUB_REPO=${DSF_GITHUB_REPO:-}
+    depends_on:
+      - redis
