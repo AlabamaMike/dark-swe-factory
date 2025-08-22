@@ -1,19 +1,23 @@
-from enum import Enum
-from pydantic import BaseModel, Field
-from typing import List, Optional
-from datetime import datetime
 import uuid
+from datetime import datetime
+from enum import Enum
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
 
 class AgentType(str, Enum):
     CODE = "code"
     TEST = "test"
     REVIEW = "review"
 
+
 class TaskStatus(str, Enum):
     PENDING = "pending"
     RUNNING = "running"
     DONE = "done"
     FAILED = "failed"
+
 
 class Task(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
@@ -23,6 +27,7 @@ class Task(BaseModel):
     depends_on: List[str] = Field(default_factory=list)
     status: TaskStatus = TaskStatus.PENDING
     result: Optional[str] = None
+
 
 class Feature(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))

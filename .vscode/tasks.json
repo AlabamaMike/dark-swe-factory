@@ -4,15 +4,44 @@
 		{
 			"label": "Run tests",
 			"type": "shell",
-			"command": "pytest",
+			"command": "bash",
 			"args": [
-				"-q"
+				"-lc",
+				"source .venv/bin/activate 2>/dev/null || true; pytest"
 			],
 			"isBackground": false,
-			"problemMatcher": [
-				"$pytest"
-			],
 			"group": "test"
+		},
+		{
+			"label": "Quality Gate",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"source .venv/bin/activate 2>/dev/null || true; ruff check . && black --check . && pytest && bandit -c pyproject.toml -r services"
+			],
+			"problemMatcher": []
+		},
+		{
+			"label": "Format (black)",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"source .venv/bin/activate 2>/dev/null || true; black ."
+			],
+			"problemMatcher": []
+		},
+		{
+			"label": "Quality Gate",
+			"type": "shell",
+			"command": "bash",
+			"args": [
+				"-lc",
+				"source .venv/bin/activate 2>/dev/null || true; ruff check . && black --check . && pytest && bandit -c pyproject.toml -r services"
+			],
+			"isBackground": false,
+			"group": "build"
 		}
 	]
 }

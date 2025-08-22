@@ -1,16 +1,20 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List
 from datetime import datetime
+from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
 
 class FeatureIn(BaseModel):
     title: str
     description: str
+
 
 class FeatureOut(BaseModel):
     id: str
     title: str
     description: str
     created_at: datetime
+
 
 class TaskOut(BaseModel):
     id: str
@@ -19,6 +23,7 @@ class TaskOut(BaseModel):
     agent_type: str
     status: str
     result: Optional[str] = None
+
 
 class FeatureStatusOut(BaseModel):
     id: str

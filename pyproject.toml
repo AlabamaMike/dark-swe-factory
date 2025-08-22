@@ -1,0 +1,34 @@
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.ruff]
+line-length = 100
+exclude = [
+  ".venv",
+  ".git",
+  "dist",
+  "build",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["services"]
+
+[tool.pytest.ini_options]
+addopts = "-q --cov=services --cov-report=term-missing --cov-fail-under=80"
+asyncio_mode = "auto"
+
+[tool.bandit]
+exclude_dirs = ["tests", ".venv"]
+
+[tool.coverage.run]
+source = ["services"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 80

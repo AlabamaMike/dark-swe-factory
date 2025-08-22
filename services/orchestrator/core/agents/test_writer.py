@@ -1,10 +1,12 @@
-from .base import BaseAgent
-from ..models import Task
 import asyncio
+
+from ..models import Task
+from .base import BaseAgent
+
 
 class TestWriterAgent(BaseAgent):
     name = "test-writer"
 
     async def run(self, task: Task) -> str:
         await asyncio.sleep(0.05)
-        return f"def test_placeholder():\n    assert 1 + 1 == 2\n"
+        return "def test_placeholder():\n    assert 1 + 1 == 2\n"

@@ -1,12 +1,16 @@
 from __future__ import annotations
+
 import asyncio
 from typing import Dict, List, Optional
+
 import networkx as nx
-from .models import Feature, Task, TaskStatus, AgentType
-from .dag import basic_decompose
+
 from .agents.code_writer import CodeWriterAgent
-from .agents.test_writer import TestWriterAgent
 from .agents.review import ReviewAgent
+from .agents.test_writer import TestWriterAgent
+from .dag import basic_decompose
+from .models import AgentType, Feature, Task, TaskStatus
+
 
 class Orchestrator:
     def __init__(self):
@@ -43,7 +47,11 @@ class Orchestrator:
         # Run tasks respecting dependencies
         pending = set(g.nodes())
         while pending:
-            runnable = [n for n in list(pending) if all(self._tasks[d].status == TaskStatus.DONE for d in g.predecessors(n))]
+            runnable = [
+                n
+                for n in list(pending)
+                if all(self._tasks[d].status == TaskStatus.DONE for d in g.predecessors(n))
+            ]
             if not runnable:
                 # Detect deadlock if any task failed
                 failures = [n for n in pending if self._tasks[n].status == TaskStatus.FAILED]
@@ -74,6 +82,7 @@ class Orchestrator:
 
     def feature_status(self, feature_id: str):
         from services.orchestrator.app.schemas import FeatureStatusOut, TaskOut
+
         feat = self._features[feature_id]
         tasks = [self._tasks[tid] for tid in feat.task_ids]
         total = len(tasks)
@@ -83,7 +92,11 @@ class Orchestrator:
         pending = total - completed - running - failed
         return FeatureStatusOut(
             id=feature_id,
-            status=("done" if completed == total else "running" if completed > 0 or running > 0 else "pending"),
+            status=(
+                "done"
+                if completed == total
+                else "running" if completed > 0 or running > 0 else "pending"
+            ),
             completed=completed,
             total=total,
             running=running,

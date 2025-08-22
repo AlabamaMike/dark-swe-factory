@@ -37,3 +37,14 @@ curl -sS -X POST http://localhost:8000/features \
 ## Status
 
 MVP-only. Non-persistent in-memory state. Not production-ready.
+
+## Quality gate
+
+- Lint & format check (ruff, black), tests with coverage, and Bandit security scan:
+
+```bash
+source .venv/bin/activate
+ruff check . && black --check . && pytest && bandit -c pyproject.toml -r services
+```
+
+VS Code Task: “Quality Gate” (Run -> Tasks -> Quality Gate)
