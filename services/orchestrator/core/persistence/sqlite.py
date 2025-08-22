@@ -49,6 +49,12 @@ class SQLitePersistence:
                 created_at TEXT NOT NULL,
                 FOREIGN KEY(task_id) REFERENCES tasks(id)
             );
+            CREATE TABLE IF NOT EXISTS issue_features (
+                issue_id INTEGER PRIMARY KEY,
+                feature_id TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY(feature_id) REFERENCES features(id)
+            );
             """
         )
         self._conn.commit()
@@ -172,3 +178,27 @@ class SQLitePersistence:
         if not row:
             return None
         return (row["branch"], int(row["pr_number"]))
+
+    def link_issue_feature(self, issue_id: int, feature_id: str) -> None:
+        cur = self._conn.cursor()
+        cur.execute(
+            "INSERT OR REPLACE INTO issue_features(issue_id, feature_id, created_at) VALUES (?,?,?)",
+            (int(issue_id), feature_id, datetime.utcnow().isoformat()),
+        )
+        self._conn.commit()
+
+    def get_feature_by_issue(self, issue_id: int) -> Optional[str]:
+        cur = self._conn.cursor()
+        row = cur.execute(
+            "SELECT feature_id FROM issue_features WHERE issue_id=?",
+            (int(issue_id),),
+        ).fetchone()
+        return row["feature_id"] if row else None
+
+    def get_issue_by_feature(self, feature_id: str) -> Optional[int]:
+        cur = self._conn.cursor()
+        row = cur.execute(
+            "SELECT issue_id FROM issue_features WHERE feature_id=?",
+            (feature_id,),
+        ).fetchone()
+        return int(row["issue_id"]) if row else None

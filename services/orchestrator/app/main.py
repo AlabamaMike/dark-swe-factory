@@ -59,10 +59,20 @@ async def github_webhook(
 
     if event == "issues" and body.get("action") == "opened":
         issue = body.get("issue", {})
+        issue_id = issue.get("id") or issue.get("number")
         title = (issue.get("title") or "").strip()
         desc = issue.get("body") or ""
         if title:
+            # Idempotency: if this issue already created a feature, reuse it
+            if orchestrator._persistence and issue_id is not None:
+                existing_fid = orchestrator._persistence.get_feature_by_issue(int(issue_id))
+                if existing_fid:
+                    if bg is not None:
+                        bg.add_task(orchestrator.run_feature, existing_fid)
+                    return {"ok": True, "event": event, "feature_id": existing_fid}
             feat = orchestrator.submit_feature(title=title, description=desc)
+            if orchestrator._persistence and issue_id is not None:
+                orchestrator._persistence.link_issue_feature(int(issue_id), feat.id)
             if bg is not None:
                 bg.add_task(orchestrator.run_feature, feat.id)
             return {"ok": True, "event": event, "feature_id": feat.id}

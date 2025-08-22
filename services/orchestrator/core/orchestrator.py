@@ -213,6 +213,22 @@ class Orchestrator:
             )
             if self._persistence:
                 self._persistence.record_task_pr(task.id, branch, pr_num)
+                # Comment on originating issue if linked
+                try:
+                    feature_id = None
+                    for fid, feat in self._features.items():
+                        if task.id in feat.task_ids:
+                            feature_id = fid
+                            break
+                    if feature_id and hasattr(self._persistence, "get_issue_by_feature"):
+                        issue_num = self._persistence.get_issue_by_feature(feature_id)
+                        if issue_num:
+                            self._github.comment_on_issue(
+                                issue_num,
+                                f"Automated PR created for task {task.title}: #{pr_num} on branch `{branch}`",
+                            )
+                except Exception as _e:
+                    logging.warning("Failed to comment on issue: %s", _e)
         except Exception as e:
             # Swallow errors for MVP but log
             logging.error("GitHub integration error: %s", e)

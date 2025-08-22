@@ -112,3 +112,11 @@ class GitHubClient:
             json={"title": title, "head": branch, "base": self.default_branch, "body": body},
         )
         return r.json()["number"]
+
+    def comment_on_issue(self, issue_number: int, body: str) -> int:
+        r = self._request(
+            "POST",
+            f"/repos/{self.repo}/issues/{issue_number}/comments",
+            json={"body": body},
+        )
+        return int(r.json().get("id", 0))

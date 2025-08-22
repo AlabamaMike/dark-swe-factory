@@ -31,3 +31,13 @@ class Persistence(ABC):
 
     @abstractmethod
     def get_task_pr(self, task_id: str) -> Optional[Tuple[str, int]]: ...
+
+    # GitHub issue linkage
+    @abstractmethod
+    def link_issue_feature(self, issue_id: int, feature_id: str) -> None: ...
+
+    @abstractmethod
+    def get_feature_by_issue(self, issue_id: int) -> Optional[str]: ...
+
+    @abstractmethod
+    def get_issue_by_feature(self, feature_id: str) -> Optional[int]: ...
