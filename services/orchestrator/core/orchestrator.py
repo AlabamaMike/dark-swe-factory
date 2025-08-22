@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from typing import Dict, List, Optional
 
 import networkx as nx
@@ -10,6 +11,8 @@ from .agents.review import ReviewAgent
 from .agents.test_writer import TestWriterAgent
 from .dag import basic_decompose
 from .models import AgentType, Feature, Task, TaskStatus
+from .persistence.base import Persistence
+from .persistence.sqlite import SQLitePersistence
 
 
 class Orchestrator:
@@ -22,6 +25,11 @@ class Orchestrator:
             AgentType.TEST: TestWriterAgent(),
             AgentType.REVIEW: ReviewAgent(),
         }
+        # Optional persistence
+        self._persistence: Optional[Persistence] = None
+        if os.getenv("DSF_DB", "sqlite").lower() == "sqlite":
+            self._persistence = SQLitePersistence()
+            self._persistence.init()
 
     def submit_feature(self, title: str, description: str) -> Feature:
         feature = Feature(title=title, description=description)
@@ -31,15 +39,41 @@ class Orchestrator:
         for t in tasks:
             self._tasks[t.id] = t
             feature.task_ids.append(t.id)
+        if self._persistence:
+            self._persistence.save_feature_with_tasks(feature, tasks)
         return feature
 
     def get_feature(self, feature_id: str) -> Optional[Feature]:
+        if self._persistence:
+            feat = self._persistence.get_feature(feature_id)
+            if feat:
+                # Ensure in-memory graph exists if loaded later (rebuild minimal graph)
+                if feature_id not in self._graphs:
+                    g = nx.DiGraph()
+                    for t in self._persistence.list_tasks(feature_id):
+                        g.add_node(t.id, task=t)
+                        for dep in t.depends_on:
+                            g.add_edge(dep, t.id)
+                    self._graphs[feature_id] = g
+                    self._tasks.update(
+                        {
+                            n: self._graphs[feature_id].nodes[n]["task"]
+                            for n in self._graphs[feature_id].nodes
+                        }
+                    )
+                self._features[feature_id] = feat
+                return feat
         return self._features.get(feature_id)
 
     def list_tasks(self, feature_id: str) -> List[Task]:
-        feat = self._features.get(feature_id)
+        feat = self.get_feature(feature_id)
         if not feat:
             return []
+        if self._persistence:
+            tasks = self._persistence.list_tasks(feature_id)
+            for t in tasks:
+                self._tasks[t.id] = t
+            return tasks
         return [self._tasks[tid] for tid in feat.task_ids]
 
     async def run_feature(self, feature_id: str):
@@ -76,9 +110,13 @@ class Orchestrator:
             result = await agent.run(task)
             task.result = result
             task.status = TaskStatus.DONE
+            if self._persistence:
+                self._persistence.update_task(task)
         except Exception as e:
             task.result = f"error: {e}"
             task.status = TaskStatus.FAILED
+            if self._persistence:
+                self._persistence.update_task(task)
 
     def feature_status(self, feature_id: str):
         from services.orchestrator.app.schemas import FeatureStatusOut, TaskOut
